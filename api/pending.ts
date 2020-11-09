@@ -11,11 +11,12 @@ const web3 = new Web3(
 
 const pending = async (pid: number, address: string) => {
   const chef = new web3.eth.Contract(chefABI, '0x73feaa1eE314F8c655E354234017bE2193C9E24E');
-  let pending = await chef.methods.pendingCake(pid, address).call()
+  const pending = await chef.methods.pendingCake(pid, address).call()
   return pending;
 }
 
 export default async (_req: NowRequest, res: NowResponse) => {
-  const data = await pending(1, '0x83b7F4547401141F4c1fD21e86e3F72579bbe3Ec')
-  res.status(200).send({_req, data});
+  const { address = '0x0F9399FC81DaC77908A2Dde54Bb87Ee2D17a3373', pid='0' } = _req.query
+  const data = await pending(pid, address)
+  res.status(200).send(data);
 };
