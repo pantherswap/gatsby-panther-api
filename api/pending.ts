@@ -19,7 +19,7 @@ const pending = async (pid: number, address: string) => {
   };
 };
 
-export default async (_req: NowRequest, res: NowResponse) => {
+export default async (_req: NowRequest, res: NowResponse): Promise<void> => {
   const { address = "0x0F9399FC81DaC77908A2Dde54Bb87Ee2D17a3373", pid = "1" } = _req.query;
   if (Array.isArray(pid)) {
     res.status(400).send({ error: "Parameter Incorrect" });

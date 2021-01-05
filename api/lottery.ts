@@ -9,7 +9,7 @@ import {
 
 export const lottery = async (
   pageSize?: number,
-  page: number = 0
+  page = 0
 ): Promise<{
   totalPage?: number;
   totalItems?: number;
@@ -58,7 +58,14 @@ export const lottery = async (
   };
 };
 
-export const handleAPICall = async (query: NowRequestQuery) => {
+export const handleAPICall = async (query: NowRequestQuery): Promise<{
+  totalPage?: number;
+  totalItems?: number;
+  lotteries?: Array<Lottery>;
+  currentPage?: number;
+  error?: string;
+  errorMessage?: string;
+}> => {
   const { pageSize, page } = query;
 
   const data = await lottery(
@@ -68,7 +75,7 @@ export const handleAPICall = async (query: NowRequestQuery) => {
   return data;
 };
 
-export default async (_req: NowRequest, res: NowResponse) => {
+export default async (_req: NowRequest, res: NowResponse): Promise<void> => {
   const data = await handleAPICall(_req.query);
   res.status(200).send(data);
 };

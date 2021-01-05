@@ -1,7 +1,6 @@
 import { PromisifyBatchRequest } from "../lib/PromiseBatchRequest";
 import { getContract } from "../lib/contract";
-import { rates, ratesOld } from "./lotteryRates";
-
+import { Rates, rates, ratesOld } from "./lotteryRates";
 const lotteryABI = require("../contracts/lottery");
 
 export interface SingleLotteryReturn {
@@ -114,7 +113,7 @@ export const getIssueIndex = async (): Promise<number | { error: string; errorMe
   return issueIndex;
 };
 
-export const getRates = (lotteryNumber: number) => {
+export const getRates = (lotteryNumber: number): Rates => {
   const ratesToUse = lotteryNumber >= 206 ? rates : ratesOld;
   return ratesToUse;
 };

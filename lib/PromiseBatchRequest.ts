@@ -13,8 +13,8 @@ export class PromisifyBatchRequest<R> {
   }
 
   add = (_request: any, ...params: any) => {
-    let that = this;
-    let request: Promise<R> = new Promise((resolve, reject) => {
+    const that = this;
+    const request: Promise<R> = new Promise((resolve, reject) => {
       that.batch.add(
         _request.request(null, (err: any, data: R) => {
           if (err) return reject(err);
