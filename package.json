@@ -25,7 +25,7 @@
     "dev": "gatsby develop",
     "build": "gatsby build",
     "format": "prettier --write 'api/**/*.{js,ts}'",
-    "test": "jest --watch",
-    "coverage": "jest --coverage"
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   }
 }
