@@ -8,10 +8,6 @@ interface Network {
   totalGasUSDT: number;
   avgGasUsed: number;
   avgGasUSDT: number;
-  minGasPrice: number;
-  maxGasPrice: number;
-  totalFailedTxs: number;
-  totalFailedGas: number;
 }
 
 interface Transaction {
@@ -35,10 +31,10 @@ interface Transaction {
   confirmations: string;
 }
 
-const getPrice = async (symbol: string) => {
+const getPrice = async (symbol: string): Promise<string> => {
   const request = await axios.get("https://api.binance.com/api/v3/avgPrice", {
     params: {
-      symbol,
+      symbol: `${symbol}USDT`,
     },
   });
 
@@ -46,8 +42,21 @@ const getPrice = async (symbol: string) => {
   return price;
 };
 
-const getTxs = async (baseDomain: string, address: string) => {
-  const request = await axios.get(`https://api.${baseDomain}/api`, {
+const getGasPrice = async (): Promise<string> => {
+  const request = await axios.get("https://api.etherscan.io/api", {
+    params: {
+      module: "gastracker",
+      action: "gasoracle",
+      apikey: process.env.ETHERSCAN_API_KEY,
+    },
+  });
+
+  const { FastGasPrice } = request.data.result;
+  return FastGasPrice;
+};
+
+const getTxs = async (address: string): Promise<Transaction[]> => {
+  const request = await axios.get(`https://api.bscscan.com/api`, {
     params: {
       module: "account",
       action: "txlist",
@@ -55,7 +64,7 @@ const getTxs = async (baseDomain: string, address: string) => {
       startblock: 0,
       endblock: 99999999,
       sort: "desc",
-      apikey: process.env.API_KEY,
+      apikey: process.env.BSCSCAN_API_KEY,
     },
   });
 
@@ -63,36 +72,30 @@ const getTxs = async (baseDomain: string, address: string) => {
   return result;
 };
 
-const getStatForNetwork = async (network: string, address: string): Promise<Network> => {
-  const baseDomain = network === "ETH" ? "etherscan.io" : "bscscan.com";
-  const symbol = network === "ETH" ? "ETHUSDT" : "BNBUSDT";
-
-  const price = await getPrice(symbol);
-
-  const txs = await getTxs(baseDomain, address);
-  const succeeded = txs.filter((tx: Transaction) => tx.from === address.toLowerCase());
-  const failed = txs.filter((tx: Transaction) => tx.isError === "1");
-
-  // Succeeded transactions.
-  const totalTxs = succeeded.length;
-  const gasUsed = succeeded.map((tx: Transaction) => parseInt(tx.gasUsed));
-  const gasPrice = succeeded.map((tx: Transaction) => parseInt(tx.gasPrice));
+const getStatForNetwork = async (
+  transactions: Transaction[],
+  price: string,
+  estimatedGasPrice: string | undefined
+): Promise<Network> => {
+  const totalTxs = transactions.length;
+  const gasUsed = transactions.map((tx: Transaction) => parseInt(tx.gasUsed));
+  const gasPrice = transactions.map((tx: Transaction) => parseInt(estimatedGasPrice ?? tx.gasPrice));
   const totalGas =
-    succeeded.reduce((acc: number, tx: Transaction) => acc + parseInt(tx.gasUsed) * parseInt(tx.gasPrice), 0) / 1e18;
+    transactions.reduce(
+      (acc: number, tx: Transaction) => acc + parseInt(tx.gasUsed) * parseInt(estimatedGasPrice ?? tx.gasPrice),
+      0
+    ) / 1e18;
   const totalGasUSDT =
-    (succeeded.reduce((acc: number, tx: Transaction) => acc + parseInt(tx.gasUsed) * parseInt(tx.gasPrice), 0) / 1e18) *
-    price;
+    (transactions.reduce(
+      (acc: number, tx: Transaction) => acc + parseInt(tx.gasUsed) * parseInt(estimatedGasPrice ?? tx.gasPrice),
+      0
+    ) /
+      1e18) *
+    Number(price);
   const totalGasUsed = gasUsed.reduce((acc: number, value: number) => acc + value, 0);
   const totalGasPrice = gasPrice.reduce((acc: number, value: number) => acc + value, 0);
   const avgGasUsed = totalGasPrice / totalTxs / 1e9;
   const avgGasUSDT = totalGasUSDT / totalTxs;
-  const minGasPrice = Math.min(...gasPrice) / 1e9;
-  const maxGasPrice = Math.max(...gasPrice) / 1e9;
-
-  // Failed transaction.
-  const totalFailedTxs = failed.length;
-  const totalFailedGas =
-    failed.reduce((acc: number, tx: Transaction) => acc + parseInt(tx.gasUsed) * parseInt(tx.gasPrice), 0) / 1e18;
 
   return {
     totalTxs,
@@ -101,19 +104,19 @@ const getStatForNetwork = async (network: string, address: string): Promise<Netw
     totalGasUSDT,
     avgGasUsed,
     avgGasUSDT,
-    minGasPrice,
-    maxGasPrice,
-    totalFailedTxs,
-    totalFailedGas,
   };
 };
 
 export default async (req: NowRequest, res: NowResponse) => {
   const { address } = req.query;
 
-  const ethNetwork = await getStatForNetwork("ETH", address as string);
-  const bscNetwork = await getStatForNetwork("BSC", address as string);
-  const cheaper = Math.round(ethNetwork.avgGasUSDT / bscNetwork.avgGasUSDT);
+  const sanitized: string = address as string;
+  const txs: Transaction[] = await getTxs(sanitized);
+  const succeeded: Transaction[] = txs.filter((tx: Transaction) => tx.from === sanitized.toLowerCase());
 
-  res.json({ address, eth: ethNetwork, bsc: bscNetwork, cheaper });
+  const gasPrice: string = await getGasPrice();
+  const bscNetwork = await getStatForNetwork(succeeded, await getPrice("BNB"), undefined);
+  const ethNetwork = await getStatForNetwork(succeeded, await getPrice("ETH"), (Number(gasPrice) * 1e9).toString());
+
+  res.json({ address, chains: { eth: ethNetwork, bsc: bscNetwork } });
 };
