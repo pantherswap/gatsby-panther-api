@@ -1,12 +1,13 @@
 import { PromisifyBatchRequest } from "../lib/PromiseBatchRequest";
 import { getContract } from "../lib/contract";
-import { rates, ratesOld } from "./lotteryRates";
+import { ratesV2, ratesV1, rates, Rates } from "./lotteryRates";
+import { LOTTERY_CONTRACT } from "./constants";
 
 const lotteryABI = require("../contracts/lottery");
 
 export interface SingleLotteryReturn {
   numbers1: Promise<[string, string, string, string]>;
-  numbers2: Promise<[string, string, string, string]>;
+  numbers2: Promise<Array<string>>;
   index: number;
 }
 
@@ -24,9 +25,11 @@ export interface SingleLottery {
   jackpotTicket: number;
   match3Ticket: number;
   match2Ticket: number;
+  match1Ticket: number | null;
   poolJackpot: number;
   poolMatch3: number;
   poolMatch2: number;
+  poolMatch1: number | null;
   burned: number;
   contractLink: string;
 }
@@ -46,7 +49,7 @@ export interface LotteryHistory {
  * @param index
  */
 export const getSingleLotteryBatch = (index: number): SingleLotteryReturn => {
-  const lotteryContract = getContract(lotteryABI, "0x3C3f2049cc17C136a604bE23cF7E42745edf3b91");
+  const lotteryContract = getContract(lotteryABI, LOTTERY_CONTRACT);
   const batch = new PromisifyBatchRequest<string>();
   const batch2 = new PromisifyBatchRequest<string>();
   [
@@ -55,16 +58,26 @@ export const getSingleLotteryBatch = (index: number): SingleLotteryReturn => {
     lotteryContract.methods.historyNumbers(index, 2).call,
     lotteryContract.methods.historyNumbers(index, 3).call,
   ].map((x) => batch.add(x));
-  [
-    lotteryContract.methods.historyAmount(index, 0).call,
-    lotteryContract.methods.historyAmount(index, 1).call,
-    lotteryContract.methods.historyAmount(index, 2).call,
-    lotteryContract.methods.historyAmount(index, 3).call,
-  ].map((x) => batch2.add(x));
+  if (index >= 349) {
+    [
+      lotteryContract.methods.historyAmount(index, 0).call,
+      lotteryContract.methods.historyAmount(index, 1).call,
+      lotteryContract.methods.historyAmount(index, 2).call,
+      lotteryContract.methods.historyAmount(index, 3).call,
+      lotteryContract.methods.historyAmount(index, 4).call,
+    ].map((x) => batch2.add(x));
+  } else {
+    [
+      lotteryContract.methods.historyAmount(index, 0).call,
+      lotteryContract.methods.historyAmount(index, 1).call,
+      lotteryContract.methods.historyAmount(index, 2).call,
+      lotteryContract.methods.historyAmount(index, 3).call,
+    ].map((x) => batch2.add(x));
+  }
 
   return {
     numbers1: batch.execute() as Promise<[string, string, string, string]>,
-    numbers2: batch2.execute() as Promise<[string, string, string, string]>,
+    numbers2: batch2.execute() as Promise<Array<string>>,
     index,
   };
 };
@@ -79,7 +92,7 @@ export const getSingleLotteryBatch = (index: number): SingleLotteryReturn => {
  */
 const createLotteryItem = async (
   numbers1Prom: Promise<[string, string, string, string]>,
-  numbers2Prom: Promise<[string, string, string, string]>,
+  numbers2Prom: Promise<Array<string>>,
   index: number,
   finalNumbers: Array<Lottery>
 ) => {
@@ -95,7 +108,7 @@ const createLotteryItem = async (
 };
 
 export const getIssueIndex = async (): Promise<number | { error: string; errorMessage: string }> => {
-  const lotteryContract = getContract(lotteryABI, "0x3C3f2049cc17C136a604bE23cF7E42745edf3b91");
+  const lotteryContract = getContract(lotteryABI, LOTTERY_CONTRACT);
   let issueIndex: number | undefined = undefined;
   let retryIsseIndex = 0;
   while (typeof issueIndex === "undefined" && retryIsseIndex <= 3) {
@@ -114,9 +127,17 @@ export const getIssueIndex = async (): Promise<number | { error: string; errorMe
   return issueIndex;
 };
 
-export const getRates = (lotteryNumber: number) => {
-  const ratesToUse = lotteryNumber >= 206 ? rates : ratesOld;
-  return ratesToUse;
+/**
+ * @param index
+ */
+export const getRates = (index: number): Rates => {
+  if (index >= 0 && index <= 205) {
+    return ratesV1;
+  } else if (index >= 206 && index <= 348) {
+    return ratesV2;
+  }
+
+  return rates;
 };
 
 export const getAllLotteries = (issueIndex: number): Promise<Array<Lottery>> => {
