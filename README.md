@@ -1,6 +1,6 @@
-# pancake-api
+# panther-api
 
-Set of endpoints utilities for PancakeSwap, based on Serverless.
+Set of endpoints utilities for PantherSwap, based on Serverless.
 
 ## Dependencies
 

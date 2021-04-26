@@ -1,5 +1,5 @@
 {
-  "name": "gatsby-pancake-api",
+  "name": "gatsby-panther-api",
   "version": "1.0.0",
   "license": "MIT",
   "scripts": {
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@ethersproject/abi": "^5.0.13",
-    "@pancakeswap-libs/sdk": "^1.0.1",
+    "@pancakeswap-libs/sdk": "pantherswap/pantherswap-sdk",
     "bignumber.js": "^9.0.1",
     "ethers": "^5.0.32",
     "web3": "1.3.3",
