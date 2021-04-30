@@ -144,8 +144,8 @@ export const getRates = (index: number): Rates => {
   //   return ratesV2;
   // }
 
-  if(index >= 0) {
-    return ratesV2
+  if (index >= 0) {
+    return ratesV2;
   }
 
   return ratesV2;
