@@ -138,13 +138,17 @@ export const getTicketPrice = (index: number): number => {
  * @param index
  */
 export const getRates = (index: number): Rates => {
-  if (index >= 0 && index <= 205) {
-    return ratesV1;
-  } else if ((index >= 206 && index <= 348) || index >= 356) {
-    return ratesV2;
+  // if (index >= 0 && index <= 205) {
+  //   return ratesV1;
+  // } else if ((index >= 206 && index <= 348) || index >= 356) {
+  //   return ratesV2;
+  // }
+
+  if(index >= 0) {
+    return ratesV2
   }
 
-  return rates;
+  return ratesV2;
 };
 
 export const getAllLotteries = (issueIndex: number): Promise<Array<Lottery>> => {
